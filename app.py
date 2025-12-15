@@ -11,24 +11,26 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
-
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'fallback-secret-key-for-development')
+
+# ---------- MySQL config ----------
 
 db_config = {
     'host': 'localhost',
     'user': 'root',
-    'password': 'user',       # change to your real MySQL password
+    'password': 'user',       # change if needed
     'database': 'pokemon_db', # must contain table `pokemon`
     'port': 3306
 }
 
 def get_db_connection():
     try:
-        connection = mysql.connector.connect(**db_config)
-        return connection
+        return mysql.connector.connect(**db_config)
     except Error as e:
         print(f"Error connecting to MySQL: {e}")
         return None
+
+# ---------- format JSON / XML ----------
 
 def format_response(data, status_code=200):
     accept_header = request.headers.get('Accept', 'application/json')
@@ -37,10 +39,9 @@ def format_response(data, status_code=200):
         response = make_response(xml_data, status_code)
         response.headers['Content-Type'] = 'application/xml'
         return response
-    else:
-        return jsonify(data), status_code
+    return jsonify(data), status_code
 
-# ---------------- JWT auth ----------------
+# ---------- JWT decorator ----------
 
 def token_required(f):
     @wraps(f)
@@ -53,7 +54,6 @@ def token_required(f):
         try:
             if token.startswith('Bearer '):
                 token = token[7:]
-
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
             current_user = data['username']
         except jwt.ExpiredSignatureError:
@@ -62,15 +62,13 @@ def token_required(f):
             return format_response({'error': 'Token is invalid!'}, 401)
 
         return f(current_user, *args, **kwargs)
-
     return decorated
 
-# ---------------- AUTH API ----------------
+# ---------- AUTH API ----------
 
 @app.route('/api/register', methods=['POST'])
 def register():
     data = request.get_json()
-
     if not data or not all(k in data for k in ('username', 'password')):
         return format_response({'error': 'Missing username or password'}, 400)
 
@@ -88,17 +86,17 @@ def register():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-
-        query = "INSERT INTO users (username, password) VALUES (%s, %s)"
-        cursor.execute(query, (data['username'], data['password']))
+        cursor.execute(
+            "INSERT INTO users (username, password) VALUES (%s, %s)",
+            (data['username'], data['password'])
+        )
         connection.commit()
         cursor.close()
         connection.close()
-
-        return format_response({
-            'message': 'User registered successfully',
-            'username': data['username']
-        }, 201)
+        return format_response(
+            {'message': 'User registered successfully', 'username': data['username']},
+            201
+        )
     except mysql.connector.IntegrityError:
         return format_response({'error': 'Username already exists'}, 400)
     except Error as e:
@@ -107,7 +105,6 @@ def register():
 @app.route('/api/login', methods=['POST'])
 def login():
     data = request.get_json()
-
     if not data or not all(k in data for k in ('username', 'password')):
         return format_response({'error': 'Missing username or password'}, 400)
 
@@ -117,8 +114,10 @@ def login():
 
     try:
         cursor = connection.cursor(dictionary=True)
-        query = "SELECT * FROM users WHERE username = %s AND password = %s"
-        cursor.execute(query, (data['username'], data['password']))
+        cursor.execute(
+            "SELECT * FROM users WHERE username = %s AND password = %s",
+            (data['username'], data['password'])
+        )
         user = cursor.fetchone()
         cursor.close()
         connection.close()
@@ -139,7 +138,7 @@ def login():
     except Error as e:
         return format_response({'error': str(e)}, 500)
 
-# ---------------- WEB PAGES ----------------
+# ---------- WEB PAGES ----------
 
 @app.route('/')
 def home():
@@ -155,30 +154,19 @@ def web_pokemon():
 
     try:
         cursor = connection.cursor(dictionary=True)
-
         query = "SELECT * FROM pokemon WHERE 1=1"
         params = []
-
         if search_name:
             query += " AND name LIKE %s"
             params.append(f"%{search_name}%")
-
         query += " ORDER BY id"
-
         cursor.execute(query, params)
         pokemons = cursor.fetchall()
         cursor.close()
         connection.close()
-
-        return render_template(
-            'pokemon.html',
-            pokemons=pokemons,
-            search_name=search_name
-        )
+        return render_template('pokemon.html', pokemons=pokemons, search_name=search_name)
     except Error as e:
         return f"Error: {str(e)}", 500
-
-# ---- NEW: web create Pokémon (for the Create button) ----
 
 @app.route('/web/pokemon/create', methods=['GET', 'POST'])
 def web_create_pokemon():
@@ -191,7 +179,6 @@ def web_create_pokemon():
         connection = get_db_connection()
         if not connection:
             return "Database connection failed", 500
-
         try:
             cursor = connection.cursor()
             cursor.execute(
@@ -208,10 +195,64 @@ def web_create_pokemon():
         except Error as e:
             return f"Error: {str(e)}", 400
 
-    # GET: show the form
     return render_template('create_pokemon.html')
 
-# ---------------- REST API INFO ----------------
+@app.route('/web/pokemon/update/<int:pokemon_id>', methods=['GET', 'POST'])
+def web_update_pokemon(pokemon_id):
+    connection = get_db_connection()
+    if not connection:
+        return "Database connection failed", 500
+
+    if request.method == 'POST':
+        name = request.form.get('name')
+        base_experience = request.form.get('base_experience')
+        height = request.form.get('height')
+        weight = request.form.get('weight')
+        try:
+            cursor = connection.cursor()
+            cursor.execute(
+                """
+                UPDATE pokemon
+                SET name=%s, base_experience=%s, height=%s, weight=%s
+                WHERE id=%s
+                """,
+                (name, base_experience, height, weight, pokemon_id)
+            )
+            connection.commit()
+            cursor.close()
+            connection.close()
+            return redirect(url_for('web_pokemon'))
+        except Error as e:
+            return f"Error: {str(e)}", 400
+
+    try:
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM pokemon WHERE id = %s", (pokemon_id,))
+        pokemon = cursor.fetchone()
+        cursor.close()
+        connection.close()
+        if not pokemon:
+            return "Pokémon not found", 404
+        return render_template('update_pokemon.html', pokemon=pokemon)
+    except Error as e:
+        return f"Error: {str(e)}", 500
+
+@app.route('/web/pokemon/delete/<int:pokemon_id>', methods=['POST'])
+def web_delete_pokemon(pokemon_id):
+    connection = get_db_connection()
+    if not connection:
+        return "Database connection failed", 500
+    try:
+        cursor = connection.cursor()
+        cursor.execute("DELETE FROM pokemon WHERE id = %s", (pokemon_id,))
+        connection.commit()
+        cursor.close()
+        connection.close()
+        return redirect(url_for('web_pokemon'))
+    except Error as e:
+        return f"Error: {str(e)}", 500
+
+# ---------- API INFO ----------
 
 @app.route('/api')
 def api_home():
@@ -231,7 +272,7 @@ def api_home():
         }
     })
 
-# ---------------- POKÉMON API ----------------
+# ---------- POKÉMON API ----------
 
 @app.route('/api/pokemon/search', methods=['GET'])
 def search_pokemon():
@@ -240,30 +281,22 @@ def search_pokemon():
         return format_response({'error': 'Database connection failed'}, 500)
 
     search_name = request.args.get('name', '').strip()
-
     try:
         cursor = connection.cursor(dictionary=True)
-
         query = "SELECT * FROM pokemon WHERE 1=1"
         params = []
-
         if search_name:
             query += " AND name LIKE %s"
             params.append(f"%{search_name}%")
-
         query += " ORDER BY id"
-
         cursor.execute(query, params)
         pokemons = cursor.fetchall()
         cursor.close()
         connection.close()
-
         return format_response({
             'pokemons': pokemons,
             'count': len(pokemons),
-            'search_criteria': {
-                'name': search_name if search_name else None
-            }
+            'search_criteria': {'name': search_name or None}
         })
     except Error as e:
         return format_response({'error': str(e)}, 500)
@@ -273,14 +306,12 @@ def get_all_pokemon():
     connection = get_db_connection()
     if not connection:
         return format_response({'error': 'Database connection failed'}, 500)
-
     try:
         cursor = connection.cursor(dictionary=True)
         cursor.execute("SELECT * FROM pokemon ORDER BY id")
         pokemons = cursor.fetchall()
         cursor.close()
         connection.close()
-
         return format_response({'pokemons': pokemons, 'count': len(pokemons)})
     except Error as e:
         return format_response({'error': str(e)}, 500)
@@ -290,18 +321,15 @@ def get_pokemon(pokemon_id):
     connection = get_db_connection()
     if not connection:
         return format_response({'error': 'Database connection failed'}, 500)
-
     try:
         cursor = connection.cursor(dictionary=True)
         cursor.execute("SELECT * FROM pokemon WHERE id = %s", (pokemon_id,))
         pokemon = cursor.fetchone()
         cursor.close()
         connection.close()
-
         if pokemon:
             return format_response({'pokemon': pokemon})
-        else:
-            return format_response({'error': 'Pokémon not found'}, 404)
+        return format_response({'error': 'Pokémon not found'}, 404)
     except Error as e:
         return format_response({'error': str(e)}, 500)
 
@@ -309,7 +337,6 @@ def get_pokemon(pokemon_id):
 @token_required
 def create_pokemon(current_user):
     data = request.get_json()
-
     if not data or not all(k in data for k in ('name', 'base_experience', 'height', 'weight')):
         return format_response(
             {'error': 'Missing required fields: name, base_experience, height, weight'},
@@ -319,22 +346,19 @@ def create_pokemon(current_user):
     connection = get_db_connection()
     if not connection:
         return format_response({'error': 'Database connection failed'}, 500)
-
     try:
         cursor = connection.cursor()
-        query = """
+        cursor.execute(
+            """
             INSERT INTO pokemon (name, base_experience, height, weight)
             VALUES (%s, %s, %s, %s)
-        """
-        cursor.execute(
-            query,
+            """,
             (data['name'], data['base_experience'], data['height'], data['weight'])
         )
         connection.commit()
         new_id = cursor.lastrowid
         cursor.close()
         connection.close()
-
         pokemon_created = {
             'id': new_id,
             'name': data['name'],
@@ -342,7 +366,6 @@ def create_pokemon(current_user):
             'height': data['height'],
             'weight': data['weight']
         }
-
         return format_response({
             'message': 'Pokémon created successfully',
             'pokemon': pokemon_created,
@@ -353,52 +376,33 @@ def create_pokemon(current_user):
 
 @app.route('/api/pokemon/<int:pokemon_id>', methods=['PUT'])
 @token_required
-def update_pokemon(current_user, pokemon_id):
+def update_pokemon_api(current_user, pokemon_id):
     data = request.get_json()
-
     if not data:
         return format_response({'error': 'No data provided'}, 400)
 
     connection = get_db_connection()
     if not connection:
         return format_response({'error': 'Database connection failed'}, 500)
-
     try:
         cursor = connection.cursor()
-
-        update_fields = []
-        values = []
-
-        if 'name' in data:
-            update_fields.append("name = %s")
-            values.append(data['name'])
-        if 'base_experience' in data:
-            update_fields.append("base_experience = %s")
-            values.append(data['base_experience'])
-        if 'height' in data:
-            update_fields.append("height = %s")
-            values.append(data['height'])
-        if 'weight' in data:
-            update_fields.append("weight = %s")
-            values.append(data['weight'])
-
-        if not update_fields:
+        fields, values = [], []
+        for key in ('name', 'base_experience', 'height', 'weight'):
+            if key in data:
+                fields.append(f"{key} = %s")
+                values.append(data[key])
+        if not fields:
             return format_response({'error': 'No valid fields to update'}, 400)
-
         values.append(pokemon_id)
-        query = f"UPDATE pokemon SET {', '.join(update_fields)} WHERE id = %s"
-
+        query = f"UPDATE pokemon SET {', '.join(fields)} WHERE id = %s"
         cursor.execute(query, values)
         connection.commit()
-
         if cursor.rowcount == 0:
             cursor.close()
             connection.close()
             return format_response({'error': 'Pokémon not found'}, 404)
-
         cursor.close()
         connection.close()
-
         return format_response({
             'message': 'Pokémon updated successfully',
             'pokemon_id': pokemon_id,
@@ -409,24 +413,20 @@ def update_pokemon(current_user, pokemon_id):
 
 @app.route('/api/pokemon/<int:pokemon_id>', methods=['DELETE'])
 @token_required
-def delete_pokemon(current_user, pokemon_id):
+def delete_pokemon_api(current_user, pokemon_id):
     connection = get_db_connection()
     if not connection:
         return format_response({'error': 'Database connection failed'}, 500)
-
     try:
         cursor = connection.cursor()
         cursor.execute("DELETE FROM pokemon WHERE id = %s", (pokemon_id,))
         connection.commit()
-
         if cursor.rowcount == 0:
             cursor.close()
             connection.close()
             return format_response({'error': 'Pokémon not found'}, 404)
-
         cursor.close()
         connection.close()
-
         return format_response({
             'message': 'Pokémon deleted successfully',
             'pokemon_id': pokemon_id,
@@ -435,7 +435,7 @@ def delete_pokemon(current_user, pokemon_id):
     except Error as e:
         return format_response({'error': str(e)}, 500)
 
-# ---------------- Error handlers ----------------
+# ---------- error handlers ----------
 
 @app.errorhandler(404)
 def not_found(error):
