@@ -33,8 +33,7 @@
             border-collapse: collapse;
             margin: 20px 0;
         }
-        th,
-        td {
+        th, td {
             padding: 12px;
             text-align: left;
             border-bottom: 1px solid #ddd;
@@ -51,30 +50,12 @@
             border: none;
             cursor: pointer;
         }
-        .btn-update {
-            background: #28a745;
-            color: white;
-        }
-        .btn-delete {
-            background: #dc3545;
-            color: white;
-        }
-        .btn-back {
-            background: #6c757d;
-            color: white;
-        }
-        .btn-create {
-            background: #007bff;
-            color: white;
-        }
-        .btn-search {
-            background: #17a2b8;
-            color: white;
-        }
-        .btn-clear {
-            background: #6c757d;
-            color: white;
-        }
+        .btn-update { background: #28a745; color: white; }
+        .btn-delete { background: #dc3545; color: white; }
+        .btn-back { background: #6c757d; color: white; }
+        .btn-create { background: #007bff; color: white; }
+        .btn-search { background: #17a2b8; color: white; }
+        .btn-clear { background: #6c757d; color: white; }
     </style>
 </head>
 <body>
@@ -83,7 +64,6 @@
         <a href="/" class="btn btn-back">← Back to Home</a>
         <a href="/web/pokemon/create" class="btn btn-create">+ Create New Pokémon</a>
 
-        <!-- Search Form -->
         <div class="search-box">
             <h3>🔍 Search Pokémon</h3>
             <form method="GET" action="/web/pokemon">
@@ -115,7 +95,7 @@
                     <td>{{ p.weight }}</td>
                     <td>
                         <a href="/web/pokemon/update/{{ p.id }}" class="btn btn-update">Edit</a>
-                        <form action="/web/pokemon/delete/{{ p.id }}" method="POST" style="display: inline;">
+                        <form action="/web/pokemon/delete/{{ p.id }}" method="POST" style="display:inline;">
                             <button type="submit" class="btn btn-delete"
                                     onclick="return confirm('Delete {{ p.name }}?')">Delete</button>
                         </form>
@@ -124,7 +104,7 @@
                 {% endfor %}
                 {% else %}
                 <tr>
-                    <td colspan="6" style="text-align: center;">No Pokémon found matching your search criteria.</td>
+                    <td colspan="6" style="text-align:center;">No Pokémon found.</td>
                 </tr>
                 {% endif %}
             </tbody>

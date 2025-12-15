@@ -14,12 +14,11 @@ app = Flask(__name__)
 
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'fallback-secret-key-for-development')
 
-# Use pokemon database and tables from dump
 db_config = {
     'host': 'localhost',
     'user': 'root',
-    'password': 'user',      
-    'database': 'pokemon_db',  
+    'password': 'user',       # change to your real MySQL password
+    'database': 'pokemon_db', # must contain table `pokemon`
     'port': 3306
 }
 
@@ -33,7 +32,6 @@ def get_db_connection():
 
 def format_response(data, status_code=200):
     accept_header = request.headers.get('Accept', 'application/json')
-
     if 'application/xml' in accept_header:
         xml_data = dicttoxml.dicttoxml(data, custom_root='response', attr_type=False)
         response = make_response(xml_data, status_code)
@@ -42,7 +40,7 @@ def format_response(data, status_code=200):
     else:
         return jsonify(data), status_code
 
-# ---------------- JWT auth (unchanged) ----------------
+# ---------------- JWT auth ----------------
 
 def token_required(f):
     @wraps(f)
@@ -67,6 +65,8 @@ def token_required(f):
 
     return decorated
 
+# ---------------- AUTH API ----------------
+
 @app.route('/api/register', methods=['POST'])
 def register():
     data = request.get_json()
@@ -80,7 +80,6 @@ def register():
 
     try:
         cursor = connection.cursor()
-
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -140,6 +139,8 @@ def login():
     except Error as e:
         return format_response({'error': str(e)}, 500)
 
+# ---------------- WEB PAGES ----------------
+
 @app.route('/')
 def home():
     return render_template('index.html')
@@ -177,7 +178,40 @@ def web_pokemon():
     except Error as e:
         return f"Error: {str(e)}", 500
 
-# ---------------- REST API home ----------------
+# ---- NEW: web create Pokémon (for the Create button) ----
+
+@app.route('/web/pokemon/create', methods=['GET', 'POST'])
+def web_create_pokemon():
+    if request.method == 'POST':
+        name = request.form.get('name')
+        base_experience = request.form.get('base_experience')
+        height = request.form.get('height')
+        weight = request.form.get('weight')
+
+        connection = get_db_connection()
+        if not connection:
+            return "Database connection failed", 500
+
+        try:
+            cursor = connection.cursor()
+            cursor.execute(
+                """
+                INSERT INTO pokemon (name, base_experience, height, weight)
+                VALUES (%s, %s, %s, %s)
+                """,
+                (name, base_experience, height, weight)
+            )
+            connection.commit()
+            cursor.close()
+            connection.close()
+            return redirect(url_for('web_pokemon'))
+        except Error as e:
+            return f"Error: {str(e)}", 400
+
+    # GET: show the form
+    return render_template('create_pokemon.html')
+
+# ---------------- REST API INFO ----------------
 
 @app.route('/api')
 def api_home():
@@ -197,8 +231,7 @@ def api_home():
         }
     })
 
-# ---------------- Pokémon REST API ----------------
-# Table pokemon(id, name, base_experience, height, weight) from dump.[file:1]
+# ---------------- POKÉMON API ----------------
 
 @app.route('/api/pokemon/search', methods=['GET'])
 def search_pokemon():
@@ -277,7 +310,6 @@ def get_pokemon(pokemon_id):
 def create_pokemon(current_user):
     data = request.get_json()
 
-    # id is AUTO_INCREMENT; do not require it.[file:1]
     if not data or not all(k in data for k in ('name', 'base_experience', 'height', 'weight')):
         return format_response(
             {'error': 'Missing required fields: name, base_experience, height, weight'},

@@ -6,9 +6,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
     <style>
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
         body {
             font-family: 'Poppins', Arial, sans-serif;
             max-width: 900px;
@@ -22,24 +20,11 @@
             border-radius: 16px;
             box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
         }
-        h1 {
-            color: #3b4cca;
-            margin-bottom: 5px;
-        }
-        h1 span {
-            font-weight: 700;
-        }
-        p.subtitle {
-            color: #666;
-            margin-top: 0;
-        }
-        h3 {
-            margin-top: 30px;
-            color: #333;
-        }
-        .btn-row {
-            margin: 15px 0 5px 0;
-        }
+        h1 { color: #3b4cca; margin-bottom: 5px; }
+        h1 span { font-weight: 700; }
+        p.subtitle { color: #666; margin-top: 0; }
+        h3 { margin-top: 30px; color: #333; }
+        .btn-row { margin: 15px 0 5px 0; }
         .btn {
             display: inline-block;
             padding: 10px 22px;
@@ -51,42 +36,20 @@
             border: none;
             cursor: pointer;
             font-size: 14px;
-            transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.2s ease;
         }
-        .btn.secondary {
-            background: #ffcb05;
-            color: #2b2b2b;
-        }
-        .btn:hover {
-            background: #2a2f91;
-            box-shadow: 0 6px 14px rgba(0,0,0,0.18);
-            transform: translateY(-1px);
-        }
-        .btn.secondary:hover {
-            background: #f2b700;
-        }
-        hr {
-            border: 0;
-            border-top: 1px solid #e5e5e5;
-            margin: 25px 0;
-        }
-        ul {
-            padding-left: 20px;
-        }
-        li {
-            margin: 4px 0;
-        }
+        .btn.secondary { background: #ffcb05; color: #2b2b2b; }
+        .btn:hover { background: #2a2f91; }
+        .btn.secondary:hover { background: #f2b700; }
+        hr { border: 0; border-top: 1px solid #e5e5e5; margin: 25px 0; }
+        ul { padding-left: 20px; }
+        li { margin: 4px 0; }
         code {
             background: #f1f3f5;
             padding: 2px 6px;
             border-radius: 4px;
             font-size: 13px;
         }
-        .tagline {
-            font-size: 13px;
-            color: #777;
-            margin-top: 25px;
-        }
+        .tagline { font-size: 13px; color: #777; margin-top: 25px; }
     </style>
 </head>
 <body>
@@ -102,7 +65,7 @@
 
         <hr>
 
-        <h3>API Endpoints (for Postman):</h3>
+        <h3>API Endpoints (for reference):</h3>
         <ul>
             <li>POST <code>/api/register</code> – Register new user</li>
             <li>POST <code>/api/login</code> – Login and get JWT token</li>

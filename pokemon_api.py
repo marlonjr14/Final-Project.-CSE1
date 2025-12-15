@@ -1,7 +1,7 @@
 import requests
 import json
 
-BASE_URL = 'http://localhost:5000/api'  # matches /api/pokemon routes
+BASE_URL = 'http://localhost:5000/api'
 
 def test_get_all_pokemon():
     response = requests.get(f'{BASE_URL}/pokemon')
@@ -76,7 +76,6 @@ def get_token(username, password):
 if __name__ == '__main__':
     print("Testing Pokémon REST API\n")
 
-    # First, make sure you have a user created via /api/register, then:
     token = get_token("your_username", "your_password")
 
     test_get_all_pokemon()
