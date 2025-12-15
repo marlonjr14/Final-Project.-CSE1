@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>All Pokémon</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f4f4f4;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .search-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .search-box input {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th,
+        td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background: #007bff;
+            color: white;
+        }
+        .btn {
+            padding: 8px 15px;
+            text-decoration: none;
+            border-radius: 3px;
+            margin: 0 5px;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-update {
+            background: #28a745;
+            color: white;
+        }
+        .btn-delete {
+            background: #dc3545;
+            color: white;
+        }
+        .btn-back {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-create {
+            background: #007bff;
+            color: white;
+        }
+        .btn-search {
+            background: #17a2b8;
+            color: white;
+        }
+        .btn-clear {
+            background: #6c757d;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>All Pokémon ({{ pokemons|length }})</h1>
+        <a href="/" class="btn btn-back">← Back to Home</a>
+        <a href="/web/pokemon/create" class="btn btn-create">+ Create New Pokémon</a>
+
+        <!-- Search Form -->
+        <div class="search-box">
+            <h3>🔍 Search Pokémon</h3>
+            <form method="GET" action="/web/pokemon">
+                <input type="text" name="search_name" placeholder="Search by name..." value="{{ search_name or '' }}">
+                <button type="submit" class="btn btn-search">Search</button>
+                <a href="/web/pokemon" class="btn btn-clear">Clear</a>
+            </form>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Base Experience</th>
+                    <th>Height (m)</th>
+                    <th>Weight (kg)</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if pokemons %}
+                {% for p in pokemons %}
+                <tr>
+                    <td>{{ p.id }}</td>
+                    <td>{{ p.name }}</td>
+                    <td>{{ p.base_experience }}</td>
+                    <td>{{ p.height }}</td>
+                    <td>{{ p.weight }}</td>
+                    <td>
+                        <a href="/web/pokemon/update/{{ p.id }}" class="btn btn-update">Edit</a>
+                        <form action="/web/pokemon/delete/{{ p.id }}" method="POST" style="display: inline;">
+                            <button type="submit" class="btn btn-delete"
+                                    onclick="return confirm('Delete {{ p.name }}?')">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="6" style="text-align: center;">No Pokémon found matching your search criteria.</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
